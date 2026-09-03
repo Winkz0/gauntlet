@@ -1,0 +1,176 @@
+# master_bullets.yaml — example achievement library
+# ----------------------------------------------------------
+# This is your giant resume, every role you've held and every function you've had.
+# It is the source of truth the tailoring engine reads from when adapting a resume
+# to a specific job posting. Nothing gets fabricated outside this file.
+#
+# EXAMPLE FILE. All names, employers, and metrics below are fictional.
+# Copy to master_bullets.yaml and replace with your own history.
+
+candidate:
+  name: "Peter Benjamin Parker"
+  email: "webhead@example.com"
+  phone: "(555) 555-0143"
+  location: "Queens, NY"
+  linkedin: "linkedin.com/in/example-webhead"
+  github: "github.com/example-webhead"
+  conventions:
+    no_em_dashes: true
+    spell_out_acronyms_first_use: true
+    avoid_ai_pattern_language: true
+    never_write_JD: true
+  headline_priority:
+    - Web Analytics
+    - Threat Response
+    - Avenger
+    - Photojournalism
+
+  demote:
+    - Oscorp Industries
+
+# Tailorable summary asset. The engine adapts this per role. Never fabricate beyond what's here.
+professional_summary: >
+  Response analyst with a background in field triage, sensor telemetry, and lab based
+  adversary analysis. Comfortable working alone at 3 a.m. and comfortable briefing a
+  room full of people who outrank me. Expert multitasker. Space traveler (once).
+summary_flex_angles:
+  # alternate framings the engine can pivot to based on the target role
+  crime_fighting: "Response focused analyst combining full investigation lifecycle ownership with hands on adversary hardware analysis and attack vector mapping."
+  threat_hunt: "Threat hunting oriented analyst who turns intelligence into proactive detection across dense, high population environments."
+  detection_engineering: "Detection focused analyst with hands on dashboard and tuning experience driving measurable false positive and response time reduction."
+  cloud_security: "Cloud capable analyst with hands on investigation and hardening experience across externally exposed research infrastructure."
+
+experience:
+  - company: "Avengers Initiative"
+    title: "Field Response Analyst, Anomaly Response Team"
+    location: "Manhattan, NY"
+    start: "2025-03"
+    end: "present"
+  - company: "Horizon Labs"
+    title: "Senior Research Analyst, Threat Systems"
+    location: "Manhattan, NY"
+    start: "2023-06"
+    end: "2025-02"
+  - company: "Horizon Labs"
+    title: "Research Analyst, Threat Systems"
+    location: "Manhattan, NY"
+    start: "2021-08"
+    end: "2023-06"
+  - company: "Daily Bugle"
+    title: "Freelance Photographer and IT Support"
+    location: "Manhattan, NY"
+    start: "2019-09"
+    end: "2021-08"
+
+bullets:
+  # ---- Avengers Initiative (current) ----
+  - text: "Serve as primary escalation point for borough level anomaly reports, owning engagements from first alert through containment and post incident debrief."
+    roles: [incident_response, security_analyst, threat_hunt]
+    tools: [Spider Tracer Network, Suit Telemetry Feed]
+    skills: [incident response, escalation, containment]
+    metric: "94% of engagements closed without external escalation"
+    evidence: "Named escalation contact for the Queens and lower Manhattan response zone."
+    source: "Avengers (current)"
+  - text: "Standardized evidence capture and chain of custody procedures for street level incidents, reducing disputes in after action review and improving handoff quality to partner agencies."
+    roles: [incident_response, dfir]
+    tools: []
+    skills: [process improvement, documentation, evidence handling]
+    metric: "reduced after action review disputes"
+    evidence: "Authored the evidence handling standard adopted by the response team."
+    source: "Avengers (current)"
+  - text: "Built and maintained citywide sensor dashboards aggregating tracer and telemetry feeds, cutting mean time to response on repeat offender activity."
+    roles: [detection_engineer, threat_hunt, security_analyst]
+    tools: [Suit Telemetry Feed, Spider Tracer Network]
+    skills: [dashboarding, telemetry analysis, response time reduction]
+    metric: "reduced mean time to response"
+    evidence: "Owned the citywide tracer dashboard end to end."
+    source: "Avengers (current)"
+
+  # ---- Horizon Labs, Senior ----
+  - text: "Led security reviews of externally exposed research infrastructure, identifying misconfigurations in lab systems and driving corrective hardening before public demo cycles."
+    roles: [cloud_security, security_engineer, incident_response]
+    tools: [Horizon Research Cloud]
+    skills: [cloud security, misconfiguration detection, hardening]
+    metric: null
+    evidence: "Owned pre demo security review for internet facing lab environments."
+    source: "Horizon Labs (Senior)"
+  - text: "Performed dynamic analysis of recovered adversary hardware inside an isolated containment lab, mapping capability and attack vectors to inform response decisions."
+    roles: [dfir, incident_response, detection_engineer]
+    tools: [Containment Lab, Isolated Analysis Bench]
+    skills: [dynamic analysis, hardware teardown, attack vector mapping]
+    metric: null
+    evidence: "Standing analyst for recovered device teardown and capability assessment."
+    source: "Horizon Labs (Senior)"
+  - text: "Mentored a team of 12 junior technicians on triage methodology and escalation criteria, raising consistency of first pass analysis across shifts."
+    roles: [security_analyst, incident_response]
+    tools: []
+    skills: [mentorship, training, escalation]
+    metric: "12 technicians mentored"
+    evidence: "Ran the junior technician triage curriculum and shift review."
+    source: "Horizon Labs (Senior)"
+
+  # ---- Horizon Labs, Analyst ----
+  - text: "Monitored alert queues across a 30,000 device research campus, triaging events by severity and escalating high confidence findings with documented action plans."
+    roles: [security_analyst, incident_response]
+    tools: [Campus SIEM]
+    skills: [alert triage, escalation, enterprise scale]
+    metric: "30,000 device environment"
+    evidence: "Primary queue coverage for the campus monitoring rotation."
+    source: "Horizon Labs (Analyst)"
+  - text: "Partnered with the intelligence desk to operationalize emerging biological and chemical threat indicators into proactive detection content."
+    roles: [threat_hunt, detection_engineer, incident_response]
+    tools: [Campus SIEM]
+    skills: [intel operationalization, proactive detection, cross team collaboration]
+    metric: null
+    evidence: "Converted intel reporting into deployed detection logic."
+    source: "Horizon Labs (Analyst)"
+
+  # ---- Daily Bugle ----
+  - text: "Triaged endpoint and email alerts for a 200 person newsroom as the sole security resource, prioritizing by severity against hard publication deadlines."
+    roles: [security_analyst, incident_response]
+    tools: [Newsroom Endpoint Suite]
+    skills: [alert triage, prioritization, solo coverage]
+    metric: "200 person newsroom, single analyst coverage"
+    evidence: "Only technical security resource on staff."
+    source: "Daily Bugle"
+  - text: "Authored plain language incident summaries for editorial leadership, translating technical findings into decisions non technical stakeholders could act on."
+    roles: [security_analyst, incident_response]
+    tools: []
+    skills: [reporting, stakeholder communication, remediation coordination]
+    metric: null
+    evidence: "Wrote the recurring incident summary sent to the editor in chief."
+    source: "Daily Bugle"
+
+  # ---- notable accomplishment (offensive signal) ----
+  - text: "Top 10 finisher in a citywide Capture The Flag (CTF) competition on a two person team, placing against professional red team operators and bug bounty researchers."
+    roles: [penetration_test, red_team, security_analyst]
+    tools: [Kali Linux]
+    skills: [CTF, web application testing, offensive security]
+    metric: "top 10 overall, two person team"
+    evidence: "Placed top 10 in the annual citywide CTF."
+    source: "Accomplishment"
+
+certifications:
+  - "Certified Anomaly Response Handler (CARH)"
+  - "Foundations of Threat Analysis"
+  - "Advanced Sensor Telemetry, Level II (in progress)"
+
+tool_inventory:
+  edr_siem: [Campus SIEM, Newsroom Endpoint Suite]
+  email_sec: [Newsroom Mail Gateway]
+  network: [Spider Tracer Network, Suit Telemetry Feed]
+  threat_intel: [Horizon Intel Desk]
+  proxy: [Campus Web Proxy]
+  offensive: [Kali Linux]
+  itsm: [Horizon Ticketing, Bugle Helpdesk]
+
+skills:
+  - Incident Response
+  - Threat Hunting
+  - Sensor Telemetry Analysis
+  - Adversary Hardware Analysis
+  - Cloud Security
+  - Detection Engineering
+  - Stakeholder Communication
+  - Playbook Development
+  - Analyst Mentorship and Training

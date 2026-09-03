@@ -14,8 +14,9 @@ filters:
   hybrid_requires_metro: true   # hybrid roles must name the metro below in their location
   unknown_mode_requires_metro: true  # no remote/hybrid statement + a named city elsewhere = fail
   geo_strict: true              # location must match location_ok unless no place is stated
-  location_context: "Chicago, IL"
+  location_context: "<City of choice>"
   # Locations that fail outright (word match against the posting's location string).
+  # Modify the list below to your preference
   location_block:
     - India
     - Chennai
@@ -59,6 +60,7 @@ filters:
     - CRI
   # A location must match one of these (word match). Bare "Remote" with no
   # place stated passes with a verify_location tag.
+  # Modify the list below to your preference
   location_ok:
     - United States
     - United States of America

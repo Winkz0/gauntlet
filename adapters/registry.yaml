@@ -1,0 +1,97 @@
+# Per-company adapter registry
+# ---------------------------------
+# Each entry tells the sourcing layer how to pull a company's jobs via a
+# public JSON endpoint (no scraping). Adding a company is one entry here.
+#
+# Board types and the fields they need (see adapters/boards.py):
+#   greenhouse       slug                  boards-api.greenhouse.io/v1/boards/{slug}/jobs
+#   lever            slug                  api.lever.co/v0/postings/{slug}
+#   ashby            slug                  api.ashbyhq.com/posting-api/job-board/{slug}
+#   smartrecruiters  slug                  api.smartrecruiters.com/v1/companies/{slug}/postings
+#   workday          host, tenant, site    {host}/wday/cxs/{tenant}/{site}/jobs
+#   eightfold        host, domain          {host}/api/apply/v2/jobs?domain={domain}
+#   amazon           (none)                amazon.jobs/en/search.json
+#
+# workday / eightfold / amazon are search-driven and fetch one detail page per
+# posting, so they accept an optional `search_terms` list (default in boards.py)
+# and `max_per_term`.
+#
+# Finding Workday values: open the careers site, e.g.
+#   https://crowdstrike.wd5.myworkdayjobs.com/crowdstrikecareers
+#   host = crowdstrike.wd5.myworkdayjobs.com, tenant = crowdstrike, site = crowdstrikecareers
+#
+# `verified` is documentation: the date someone last saw the endpoint return data.
+
+companies:
+  - name: CrowdStrike
+    board: workday
+    host: crowdstrike.wd5.myworkdayjobs.com
+    tenant: crowdstrike
+    site: crowdstrikecareers
+    verified: 2026-09-02
+
+  - name: TransUnion
+    board: workday
+    host: transunion.wd5.myworkdayjobs.com
+    tenant: transunion
+    site: TransUnion
+    verified: 2026-09-02
+
+  - name: Mizuho Americas
+    board: workday
+    host: mizuho.wd1.myworkdayjobs.com
+    tenant: mizuho
+    site: mizuhoamericas
+    verified: 2026-09-02
+
+  - name: Keeper Security
+    board: greenhouse
+    slug: keepersecurity
+    verified: 2026-09-02
+
+  - name: Netflix
+    board: eightfold
+    host: explore.jobs.netflix.net
+    domain: netflix.com
+    verified: 2026-09-02
+
+  - name: Amazon
+    board: amazon
+    loc_query: ""               # e.g. "Chicago, IL" to narrow; blank = all
+    verified: 2026-09-02
+
+  # ---- Not yet wired. Listed so the gap is visible, skipped at runtime. ----
+  - name: Rapid7
+    board: unsupported
+    note: careers.rapid7.com embeds Greenhouse behind a WAF; board token not public as of 2026-09-02.
+
+  - name: KPMG
+    board: unsupported
+    note: jobs.kpmg.com runs on Phenom, which has no public JSON listing.
+
+  - name: Federal Reserve Bank of Chicago
+    board: unsupported
+    note: custom portal; revisit.
+
+  - name: Google
+    board: unsupported
+    note: careers.google.com has no stable public JSON endpoint; use the Chrome discovery pass.
+
+  - name: Meta
+    board: unsupported
+    note: metacareers.com is a GraphQL app; revisit.
+
+  - name: Apple
+    board: unsupported
+    note: jobs.apple.com search API needs a session token; revisit.
+
+# ---- Keyword-only discovery sources (no fixed company) ----
+# For roles at companies not listed above. Handled by a human-driven Claude in
+# Chrome pass, never by automation. Nothing in the pipeline reads this block yet.
+discovery_sources:
+  - name: linkedin
+    method: chrome
+    enabled: false
+  - name: indeed
+    method: chrome
+    enabled: false

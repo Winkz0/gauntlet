@@ -1,0 +1,210 @@
+# Gauntlet central config.
+# Everything tunable lives here so the Python and Claude layers stay generic.
+# Secrets (Sheet ID, email, SMTP) live in config/secrets.env, see
+# config/secrets.env.example.
+
+# ---- Candidate filter gate (deterministic, no LLM) ----
+filters:
+  salary_floor: 112000          # hard floor on the posting's max (or the estimate)
+  salary_target: 120000         # at or above this gets a "strong" tag
+  allow_unverified_salary: true # surface roles with no listed salary, clearly tagged
+  remote_types_ok:              # anything else is a dealbreaker (onsite)
+    - remote
+    - hybrid
+  hybrid_requires_metro: true   # hybrid roles must name the metro below in their location
+  unknown_mode_requires_metro: true  # no remote/hybrid statement + a named city elsewhere = fail
+  geo_strict: true              # location must match location_ok unless no place is stated
+  location_context: "Chicago, IL"
+  # Locations that fail outright (word match against the posting's location string).
+  location_block:
+    - India
+    - Chennai
+    - Pune
+    - Bengaluru
+    - Hyderabad
+    - Ireland
+    - United Kingdom
+    - Germany
+    - Australia
+    - Canada
+    - Singapore
+    - Japan
+    - Israel
+    - Poland
+    - Romania
+    - Brazil
+    - Mexico
+    - Saudi Arabia
+    - UAE
+    - GBR
+    - IRL
+    - DEU
+    - FRA
+    - ESP
+    - NLD
+    - CHE
+    - AUS
+    - CAN
+    - IND
+    - SGP
+    - JPN
+    - KOR
+    - CHN
+    - BRA
+    - MEX
+    - SAU
+    - ARE
+    - MYS
+    - ZAF
+    - CRI
+  # A location must match one of these (word match). Bare "Remote" with no
+  # place stated passes with a verify_location tag.
+  location_ok:
+    - United States
+    - United States of America
+    - USA
+    - US
+    - Illinois
+    - IL
+    - Chicago
+  employment_types_ok:
+    - direct
+    - unknown                   # surfaced but tagged for manual check
+  employment_types_block:
+    - contract
+    - staffing
+    - agency
+  seniority_min: analyst_ii     # analyst_i | analyst_ii | senior | lead | principal
+  # A title with none of role_keywords_any can still pass if it contains one
+  # of these AND the body mentions a role keyword. Prevents DevOps and QA
+  # postings from passing just because "security engineer" appears in the body.
+  title_gate_terms:
+    - security
+    - soc
+    - incident
+    - threat
+    - detection
+    - forensic
+    - dfir
+    - cyber
+    - malware
+    - intrusion
+    - csirt
+
+# ---- Target companies (preference boost, NOT a hard gate) ----
+targets_preferred:
+  - CrowdStrike
+  - Rapid7
+  - Keeper Security
+  - KPMG
+  - TransUnion
+  - Federal Reserve Bank of Chicago
+  - Mizuho Americas
+  - Google
+  - Amazon
+  - Meta
+  - Apple
+  - Netflix
+
+# ---- Role keywords (what counts as "a role for me") ----
+role_keywords_any:
+  - security analyst
+  - soc analyst
+  - security operations
+  - incident response
+  - incident responder
+  - dfir
+  - digital forensics
+  - threat hunt
+  - threat hunter
+  - threat detection
+  - detection engineer
+  - detection engineering
+  - malware analyst
+  - malware analysis
+  - cyber defense
+  - security engineer
+  - cloud security
+  - offensive security
+  - penetration test
+  - red team
+role_keywords_block:              # title-only, whole-word
+  - sales
+  - account executive
+  - account manager
+  - customer success
+  - solutions architect
+  - solutions engineer
+  - sales engineer
+  - product manager
+  - program manager
+  - project manager
+  - recruiter
+  - intern
+  - internship
+  - unpaid
+  - sdet
+  - qa
+  - quality assurance
+  - devops
+  - site reliability
+  - software engineer
+  - software developer
+  - data engineer
+  - software dev
+  - software development
+  - systems developer
+  - systems development
+  - applied scientist
+  - appsec
+  - application security
+  - product security
+  - privacy
+  - compliance
+  - marketing
+  - solutions consultant
+  - director
+  - vice president
+  - vp
+  - head of
+  - physical security
+  - data center
+  - loss prevention
+  - personnel security
+  - corporate security
+  - protective services
+  - guard
+
+# ---- Model config ----
+# Documentation only. Tailoring runs inside a Claude Code session, so the
+# session's model applies. These strings record intent for a future headless
+# mode and are not read by any pipeline code today.
+models:
+  primary: "claude-fable-5"
+  fallback: "claude-opus-4-8"
+
+# ---- Notification ----
+notify:
+  digest_kinds:
+    - daily
+    - biweekly
+  email_to: ""                   # set EMAIL_TO in config/secrets.env
+  digest_time: "07:30"           # local; cron / Task Scheduler triggers the run
+  stale_after_days: 14           # biweekly digest lists yes-roles idle this long
+
+# ---- Google Sheet mirror ----
+sheet:
+  enabled: true
+  sheet_id: ""                   # set SHEET_ID in config/secrets.env
+  worksheet: "pipeline"          # the working board
+  archive_worksheet: "archive"   # rows retire here instead of being deleted
+  archive_after_days: 8          # untouched this long -> archive tab
+  gone_grace_days: 3             # posting vanished from its board this long -> archive tab
+  service_account_file: "config/secrets/gsheets_sa.json"
+
+# ---- Paths ----
+paths:
+  db: "data/gauntlet.db"
+  master_bullets: "data/master_bullets.yaml"
+  adversarial_path: "adversarial_checks_seed_prompts.md"
+  output_dir: "output"

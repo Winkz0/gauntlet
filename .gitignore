@@ -1,0 +1,18 @@
+# secrets
+config/secrets.env
+config/secrets/*
+!config/secrets/README.md
+
+# personal data: the real bullet library and every generated packet
+data/master_bullets.yaml
+data/gauntlet.db
+data/gauntlet.db-wal
+data/gauntlet.db-shm
+output/
+
+# local tooling
+.claude/settings.local.json
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/

@@ -1,4 +1,3 @@
-# The Call Is Coming From Inside the Résumé
 
 *or, what happened when a cyber defender red-teamed his own job hunt*
 

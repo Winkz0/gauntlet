@@ -12,7 +12,9 @@ from pipeline.config import load_cfg  # noqa: E402
 
 @pytest.fixture
 def cfg():
-    return load_cfg()
+    c = load_cfg()
+    c["filters"]["location_context"] = "Chicago, IL"   # tests assume this metro
+    return c
 
 
 @pytest.fixture

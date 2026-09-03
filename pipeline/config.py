@@ -7,9 +7,12 @@ Reads config/config.yaml, then overlays config/secrets.env (gitignored,
 KEY=VALUE lines) into the places that need a secret so nothing sensitive has
 to live in the committed YAML:
 
-    SHEET_ID   -> cfg["sheet"]["sheet_id"]
-    EMAIL_TO   -> cfg["notify"]["email_to"]
-    SMTP_*     -> cfg["smtp"][...]
+    SHEET_ID          -> cfg["sheet"]["sheet_id"]
+    EMAIL_TO          -> cfg["notify"]["email_to"]
+    LOCATION_CONTEXT  -> cfg["filters"]["location_context"]  (your metro, e.g. "Chicago, IL")
+    SMTP_*            -> cfg["smtp"][...]
+
+A config value written as a <placeholder> counts as unset.
 """
 from __future__ import annotations
 
@@ -46,6 +49,13 @@ def load_cfg(path: Path = CONFIG_PATH) -> dict:
     notify = cfg.setdefault("notify", {})
     if sec.get("EMAIL_TO"):
         notify["email_to"] = sec["EMAIL_TO"]
+
+    filters = cfg.setdefault("filters", {})
+    if sec.get("LOCATION_CONTEXT"):
+        filters["location_context"] = sec["LOCATION_CONTEXT"]
+    lc = str(filters.get("location_context") or "").strip()
+    if lc.startswith("<") and lc.endswith(">"):
+        filters["location_context"] = ""
 
     cfg["smtp"] = {
         "host": sec.get("SMTP_HOST", "localhost"),

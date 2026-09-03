@@ -5,7 +5,7 @@
 # to a specific job posting. Nothing gets fabricated outside this file.
 #
 # EXAMPLE FILE. All names, employers, and metrics below are fictional.
-# Copy to master_bullets.yaml and replace with your own history.
+# Copy to data/master_bullets.yaml and replace with your own history.
 
 candidate:
   name: "Peter Benjamin Parker"

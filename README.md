@@ -97,6 +97,7 @@ Push always pulls first so a phone edit is never overwritten.
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements-dev.txt
 cp config/secrets.env.example config/secrets.env      # fill in SHEET_ID, EMAIL_TO, SMTP_*
+cp data/master_bullets.example.yaml data/master_bullets.yaml   # then replace with your history
 # Optional Sheet mirror: follow config/secrets/README.md, then
 python -m pipeline.sheet_sync --init
 ```
@@ -144,11 +145,12 @@ per posting, so they take an optional `search_terms` list. See the header of
 ## Personal data
 
 `data/master_bullets.yaml`, `data/gauntlet.db`, `output/`, and everything under
-`config/secrets*` are gitignored. A fictional sample bullet library for
-running the pipeline end to end on a clean clone is planned; until then,
-write your own `data/master_bullets.yaml` with the same structure as the
-fields the skill reads (candidate, experience, bullets with roles / tools /
-skills / metric / evidence, certifications, tool_inventory, skills).
+`config/secrets*` are gitignored. `data/master_bullets.example.yaml` is a
+fictional bullet library (all names, employers, and metrics invented) that
+shows the structure the skill reads: candidate, experience, bullets with
+roles / tools / skills / metric / evidence, certifications, tool_inventory,
+skills. Copy it to `data/master_bullets.yaml` and replace every entry with
+your own history before tailoring anything.
 
 ## Tests
 

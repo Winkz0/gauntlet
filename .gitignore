@@ -1,13 +1,12 @@
 # secrets
-config/secrets.env
+config/secrets.env*
+!config/secrets.env.example
 config/secrets/*
 !config/secrets/README.md
 
 # personal data: the real bullet library and every generated packet
 data/master_bullets.yaml
-data/gauntlet.db
-data/gauntlet.db-wal
-data/gauntlet.db-shm
+data/*.db*
 output/
 
 # local tooling

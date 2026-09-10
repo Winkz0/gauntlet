@@ -3,7 +3,7 @@ PyYAML==6.0.3
 
 # Google Sheet mirror (optional; sheet_sync imports lazily)
 gspread==6.2.1
-google-auth==2.57.0
+google-auth==2.57.1
 
 # Document generation used by the per-application build_docs.py scripts.
 # PDF rendering uses LibreOffice (soffice --headless --convert-to pdf).

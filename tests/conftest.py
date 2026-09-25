@@ -12,7 +12,7 @@ from pipeline.config import load_cfg  # noqa: E402
 
 @pytest.fixture
 def cfg():
-    c = load_cfg()
+    c = load_cfg(local_path=None)                       # a machine's config.local.yaml must not leak in
     c["filters"]["location_context"] = "Chicago, IL"   # tests assume this metro
     return c
 

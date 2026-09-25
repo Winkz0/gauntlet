@@ -4,6 +4,9 @@ config/secrets.env*
 config/secrets/*
 !config/secrets/README.md
 
+# personal preferences layered over config.yaml
+config/config.local.yaml
+
 # personal data: the real bullet library and every generated packet
 data/master_bullets.yaml
 data/*.db*

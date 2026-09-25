@@ -1,0 +1,23 @@
+# Copy to config/config.local.yaml (gitignored) for preferences you do not
+# want committed. It is layered over config/config.yaml:
+#   - mappings merge key by key
+#   - any other value replaces the base value
+#   - a key ending in "+" appends to the base list
+# Values below are illustrations; replace them with your own.
+
+# Add titles to the committed blocklist, for example people-management roles.
+role_keywords_block+:
+  - manager
+  - supervisor
+
+filters:
+  # Replace a single value and keep the rest of the filters block.
+  salary_floor: 100000
+
+  # Cap levels at employers whose ladders run above the title.
+  level_cap:
+    companies: [ExampleCorp]
+    floor: analyst_i
+    ceiling: analyst_ii
+    max_level_number: 4
+    tag_unlabeled: true

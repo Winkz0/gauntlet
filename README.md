@@ -103,7 +103,10 @@ python -m pipeline.sheet_sync --init
 ```
 
 Edit `config/config.yaml` for salary floor, remote policy, metro, keyword
-lists, and blocklists. Edit `adapters/registry.yaml` to add companies.
+lists, and blocklists. Preferences you would rather not commit go in
+`config/config.local.yaml` (gitignored), which is layered over it; see
+`config/config.local.example.yaml`. Edit `adapters/registry.yaml` to add
+companies.
 PDF rendering of packets uses LibreOffice (`soffice --headless`).
 
 ## Daily use

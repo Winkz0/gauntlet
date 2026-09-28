@@ -50,3 +50,20 @@ def test_seniority():
     assert E.parse_seniority("Security Analyst I") == "analyst_i"
     assert E.parse_seniority("Director, Cyber Defense") == "principal"
     assert E.parse_seniority("Threat Detection Engineer") == "analyst_ii"
+
+
+def test_level_number_from_ladder_tokens():
+    assert E.parse_level_number("Security Engineer (L5) - Cloud Architecture") == 5
+    assert E.parse_level_number("Business Security Partner (L5)") == 5
+    assert E.parse_level_number("Security Engineer 5 - IAM") == 5
+    assert E.parse_level_number("Security Engineer, E4") == 4
+    assert E.parse_level_number("ICT3 Security Analyst") == 3
+    assert E.parse_level_number("Security Engineer II, SIRT") is None
+    assert E.parse_level_number("E2E Test Engineer") is None
+
+
+def test_level_signal_distinguishes_default_seniority():
+    assert E.has_level_signal("Security Engineer I, Threat Hunting")
+    assert E.has_level_signal("Security Engineer 5 - IAM")
+    assert E.has_level_signal("Senior Threat Hunter")
+    assert not E.has_level_signal("Network Security Penetration Tester, AppSTAR")

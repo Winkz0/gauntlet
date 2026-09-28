@@ -86,3 +86,48 @@ def test_title_prefilter_mirrors_title_rules(cfg):
     assert not F.title_prefilter("Senior DevOps Engineer", cfg)
     assert not F.title_prefilter("Security Sales Engineer", cfg)                # blocked
     assert not F.title_prefilter("Sr. Analyst, Sales Support", cfg)
+
+
+def _capped(cfg):
+    cfg["filters"]["level_cap"] = {"companies": ["BigCo"], "floor": "analyst_i", "ceiling": "analyst_ii",
+                                   "max_level_number": 4, "tag_unlabeled": True}
+    return cfg
+
+
+def test_level_cap_ceiling_and_ladder_numbers(cfg):
+    cfg = _capped(cfg)
+    for title in ("Security Engineer (L5) - Cloud Architecture", "Security Engineer 5 - IAM",
+                  "Senior Security Engineer", "Staff Security Engineer", "Lead Threat Hunter"):
+        ok, reasons = _run(cfg, company="BigCo", title=title)
+        assert not ok, title
+        assert any(r["rule"] == "level_cap" and not r["ok"] for r in reasons), title
+    for title in ("Security Engineer II, Security Incident Response Team", "Security Engineer (L4)"):
+        ok, _ = _run(cfg, company="BigCo", title=title)
+        assert ok, title
+
+
+def test_level_cap_lowers_floor_only_for_its_companies(cfg):
+    cfg = _capped(cfg)
+    ok, _ = _run(cfg, company="BigCo", title="Security Engineer I, Threat Hunting")
+    assert ok
+    ok, _ = _run(cfg, company="Acme", title="Security Engineer I, Threat Hunting")
+    assert not ok                                    # global floor still Analyst II
+    ok, _ = _run(cfg, company="Acme", title="Senior Security Engineer")
+    assert ok                                        # no ceiling outside the cap
+
+
+def test_level_cap_tags_titles_without_a_level(cfg):
+    ok, reasons = _run(_capped(cfg), company="BigCo", title="Threat Hunter")
+    assert ok and "verify_level" in F.tags_from_reasons(reasons)
+
+
+def test_appended_blocklist_drops_managers_keeps_leads(cfg):
+    from pipeline.config import merge_local
+    merge_local(cfg, {"role_keywords_block+": ["manager", "supervisor"]})
+    ok, _ = _run(cfg, title="Security Engineering Manager - Incident Response")
+    assert not ok
+    ok, _ = _run(cfg, title="Senior Manager, Red Team")
+    assert not ok
+    ok, _ = _run(cfg, title="Lead Threat Hunter")
+    assert ok
+    assert not F.title_prefilter("SOC Supervisor", cfg)

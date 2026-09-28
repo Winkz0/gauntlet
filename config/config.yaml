@@ -2,6 +2,8 @@
 # Everything tunable lives here so the Python and Claude layers stay generic.
 # Secrets (Sheet ID, email, SMTP) live in config/secrets.env, see
 # config/secrets.env.example.
+# Personal preferences you do not want committed go in config/config.local.yaml
+# (gitignored), layered over this file; see config/config.local.example.yaml.
 
 # ---- Candidate filter gate (deterministic, no LLM) ----
 filters:
@@ -77,6 +79,15 @@ filters:
     - staffing
     - agency
   seniority_min: analyst_ii     # analyst_i | analyst_ii | senior | lead | principal
+  # Optional per-company level cap for employers whose ladders run above the
+  # title (for example "Engineer 5" or "(L5)"). Off unless set, usually in
+  # config.local.yaml:
+  # level_cap:
+  #   companies: [ExampleCorp]
+  #   floor: analyst_i          # replaces seniority_min for these companies
+  #   ceiling: analyst_ii       # seniority above this fails
+  #   max_level_number: 4       # explicit ladder number above this fails
+  #   tag_unlabeled: true       # no level in the title -> verify_level tag
   # A title with none of role_keywords_any can still pass if it contains one
   # of these AND the body mentions a role keyword. Prevents DevOps and QA
   # postings from passing just because "security engineer" appears in the body.

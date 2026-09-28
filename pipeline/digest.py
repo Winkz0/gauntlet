@@ -30,6 +30,7 @@ BADGES = [
     ("estimate", "estimated salary"),
     ("salary_unknown", "salary unlisted"),
     ("verify_role", "verify role fit"),
+    ("verify_level", "verify level"),
     ("verify_remote", "verify remote"),
     ("verify_employment", "verify hire type"),
     ("verify_location", "verify location"),

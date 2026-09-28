@@ -13,14 +13,19 @@ Dealbreakers (hard fail):
   - employment_type in employment_types_block
   - salary known and max < floor
   - seniority below seniority_min
+  - optional filters.level_cap: for the listed companies, seniority outside
+    [floor, ceiling], or an explicit ladder number (L5, E5, "Engineer 5")
+    above max_level_number
 
 Soft signals (tag only): unknown salary, unknown employment, unknown remote,
 role matched only in the body, location not clearly in an ok region,
-preferred-company boost, strong salary.
+preferred-company boost, strong salary, no level in a level-capped title.
 """
 from __future__ import annotations
 
 import re
+
+from pipeline.enrich import has_level_signal, parse_level_number
 
 SENIORITY_ORDER = ["analyst_i", "analyst_ii", "senior", "lead", "principal"]
 
@@ -30,6 +35,33 @@ def _seniority_ok(job_sen: str | None, floor: str) -> bool:
         return SENIORITY_ORDER.index(job_sen or "") >= SENIORITY_ORDER.index(floor)
     except ValueError:
         return True  # unknown -> don't block
+
+
+def _level_cap(job: dict, f: dict) -> dict | None:
+    """The filters.level_cap block if it applies to this job's company."""
+    cap = f.get("level_cap") or {}
+    companies = {c.lower() for c in cap.get("companies") or []}
+    return cap if (job.get("company") or "").lower() in companies else None
+
+
+def _level_cap_check(job: dict, cap: dict) -> tuple[bool, dict]:
+    """An explicit ladder number decides when present; otherwise the seniority label does."""
+    title = job.get("title") or ""
+    level = parse_level_number(title)
+    max_level = cap.get("max_level_number")
+    if level is not None and max_level is not None:
+        if level > int(max_level):
+            return False, {"rule": "level_cap", "ok": False, "detail": f"level {level} > {max_level}"}
+        return True, {"rule": "level_cap", "ok": True, "detail": f"level {level}"}
+    ceiling = cap.get("ceiling")
+    sen = job.get("seniority")
+    if ceiling and sen in SENIORITY_ORDER and ceiling in SENIORITY_ORDER \
+            and SENIORITY_ORDER.index(sen) > SENIORITY_ORDER.index(ceiling):
+        return False, {"rule": "level_cap", "ok": False, "detail": f"{sen} > {ceiling}"}
+    if cap.get("tag_unlabeled") and not has_level_signal(title):
+        return True, {"rule": "level_cap", "ok": True, "detail": "no level in title",
+                      "tag": "verify_level"}
+    return True, {"rule": "level_cap", "ok": True, "detail": sen}
 
 
 def _has_term(text: str, terms: list[str]) -> list[str]:
@@ -170,13 +202,21 @@ def apply_filters(job: dict, cfg: dict) -> tuple[bool, list[dict]]:
         passed = False
         reasons.append({"rule": "salary", "ok": False, "detail": "not listed"})
 
-    # --- seniority floor ---
-    if _seniority_ok(job.get("seniority"), f["seniority_min"]):
+    # --- seniority floor (a level cap can lower it for its companies) ---
+    cap = _level_cap(job, f)
+    sen_floor = (cap or {}).get("floor") or f["seniority_min"]
+    if _seniority_ok(job.get("seniority"), sen_floor):
         reasons.append({"rule": "seniority", "ok": True, "detail": job.get("seniority")})
     else:
         passed = False
         reasons.append({"rule": "seniority", "ok": False,
-                        "detail": f"{job.get('seniority')} < {f['seniority_min']}"})
+                        "detail": f"{job.get('seniority')} < {sen_floor}"})
+
+    # --- level cap ceiling ---
+    if cap:
+        ok, reason = _level_cap_check(job, cap)
+        passed = passed and ok
+        reasons.append(reason)
 
     # --- preferred company boost (soft) ---
     if job.get("company") in cfg.get("targets_preferred", []):

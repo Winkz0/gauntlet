@@ -186,6 +186,30 @@ def parse_seniority(title: str) -> str:
     return "analyst_ii"  # assume mid unless signalled otherwise
 
 
+# Explicit ladder numbers used by large employers: "(L5)", "E4", "ICT3", and a
+# number right after the role noun, as in "Security Engineer 5".
+_LEVEL_NUMBER = [
+    re.compile(r"\b[le](\d{1,2})\b"),
+    re.compile(r"\bict\s?(\d)\b"),
+    re.compile(r"\b(?:engineer|analyst|scientist|partner|specialist|architect|developer|researcher)\s+(\d)\b"),
+]
+
+
+def parse_level_number(title: str) -> int | None:
+    t = (title or "").lower()
+    for rx in _LEVEL_NUMBER:
+        m = rx.search(t)
+        if m:
+            return int(m.group(1))
+    return None
+
+
+def has_level_signal(title: str) -> bool:
+    """False when parse_seniority fell back to its default and no ladder number is present."""
+    t = (title or "").lower()
+    return parse_level_number(t) is not None or any(re.search(rx, t) for rx, _ in SENIORITY_MAP)
+
+
 def enrich(job: dict) -> dict:
     text = job.get("description", "") or ""
     raw = job.get("raw")

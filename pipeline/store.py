@@ -64,8 +64,11 @@ def _columns(con: sqlite3.Connection, table: str) -> set[str]:
 
 
 def migrate(con: sqlite3.Connection) -> list[str]:
-    """Bring an older database up to the current schema. Idempotent."""
+    """Bring an older or empty database up to the current schema. Idempotent."""
     done: list[str] = []
+    if not _columns(con, "jobs"):          # fresh file, e.g. digest before the first source run
+        con.executescript(SCHEMA.read_text())
+        done.append("schema")
     if "board_status" not in _columns(con, "jobs"):
         con.execute("ALTER TABLE jobs ADD COLUMN board_status TEXT NOT NULL DEFAULT 'live'")
         con.execute("ALTER TABLE jobs ADD COLUMN gone_since TEXT")

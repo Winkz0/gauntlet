@@ -61,3 +61,12 @@ def test_migrate_legacy_rows(con):
     reasons = json.loads(con.execute("SELECT reasons FROM filter_results WHERE job_id=?", (jid,)).fetchone()[0])
     assert all(isinstance(r, dict) for r in reasons)
     assert store.migrate(con) == []
+
+
+def test_migrate_creates_schema_on_empty_db(tmp_path):
+    # digest, decide, and sheet_sync call migrate() without init_db()
+    con = store.connect(str(tmp_path / "fresh.db"))
+    assert store.migrate(con) == ["schema"]
+    assert store.digest_candidates(con) == []
+    assert store.migrate(con) == []
+    con.close()

@@ -67,3 +67,11 @@ def test_level_signal_distinguishes_default_seniority():
     assert E.has_level_signal("Security Engineer 5 - IAM")
     assert E.has_level_signal("Senior Threat Hunter")
     assert not E.has_level_signal("Network Security Penetration Tester, AppSTAR")
+
+
+def test_salary_per_year_suffix_counts_as_context():
+    # Geo-banded ranges are often written as two amounts far apart, each tagged "/year".
+    text = ("The US base salary for this position ranges from $94,000/year in our lowest geographic "
+            "market up to $140,000/year in our highest geographic market.")
+    assert E.parse_salary(text) == (94000, 140000, "posting")
+    assert E.parse_salary("Pay: $135,000/yr plus bonus") == (135000, 135000, "posting")

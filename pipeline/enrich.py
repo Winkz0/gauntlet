@@ -37,7 +37,7 @@ SALARY_MIN, SALARY_MAX = 30_000, 700_000
 
 
 _SALARY_CONTEXT = re.compile(
-    r"(salary|base pay|pay range|compensation|comp range|per year|annually|annual|/\s*yr|a year)",
+    r"(salary|base pay|pay range|compensation|comp range|per year|annually|annual|/\s*y(?:ea)?r|a year)",
     re.IGNORECASE)
 
 

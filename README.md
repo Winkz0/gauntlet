@@ -133,7 +133,9 @@ Every adapter takes the registry entry and returns a list of the same dict
 (`source, source_job_id, company, title, location, url, description, raw`).
 Workday, Eightfold, and Amazon are search-driven and fetch one detail page
 per posting, so they take an optional `search_terms` list. See the header of
-`adapters/boards.py` for the fields each board type needs.
+`adapters/boards.py` for the fields each board type needs. To keep a company
+out of the committed registry, list it under `companies+:` in
+`adapters/registry.local.yaml` (gitignored) instead.
 
 ## Guardrails
 

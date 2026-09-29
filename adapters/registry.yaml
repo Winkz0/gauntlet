@@ -21,6 +21,13 @@
 #   host = crowdstrike.wd5.myworkdayjobs.com, tenant = crowdstrike, site = crowdstrikecareers
 #
 # `verified` is documentation: the date someone last saw the endpoint return data.
+#
+# Companies you would rather not commit go in adapters/registry.local.yaml
+# (gitignored), layered over this file the same way as config.local.yaml:
+#   companies+:
+#     - name: ExampleCorp
+#       board: greenhouse
+#       slug: examplecorp
 
 companies:
   - name: CrowdStrike

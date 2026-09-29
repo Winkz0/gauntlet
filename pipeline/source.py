@@ -26,11 +26,18 @@ from pipeline import enrich as E                   # noqa: E402
 from pipeline import filters as F                  # noqa: E402
 from pipeline import salary_osint as S             # noqa: E402
 from pipeline import store                         # noqa: E402
-from pipeline.config import db_path, load_cfg      # noqa: E402
+from pipeline.config import db_path, load_cfg, merge_local  # noqa: E402
+
+REGISTRY_PATH = ROOT / "adapters" / "registry.yaml"
+REGISTRY_LOCAL_PATH = ROOT / "adapters" / "registry.local.yaml"
 
 
-def load_registry() -> dict:
-    return yaml.safe_load((ROOT / "adapters" / "registry.yaml").read_text())
+def load_registry(path: Path = REGISTRY_PATH, local_path: Path | None = REGISTRY_LOCAL_PATH) -> dict:
+    """The committed registry, layered with adapters/registry.local.yaml (gitignored) if present."""
+    reg = yaml.safe_load(path.read_text()) or {}
+    if local_path is not None and local_path.exists():
+        merge_local(reg, yaml.safe_load(local_path.read_text()) or {})
+    return reg
 
 
 def process(con, cfg: dict, job: dict) -> tuple[int, bool, bool]:

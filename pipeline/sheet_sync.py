@@ -28,6 +28,11 @@ drift. To avoid clobbering a phone edit that has not been read yet, push
 always pulls first. Rows are matched on the job id, never on position, so
 sorting or filtering on mobile is safe.
 
+A pull only counts a cell as an edit when it differs from what the last push
+wrote (kept in the sheet_state table). A decision recorded in the terminal
+therefore survives the next sync even though the Sheet still shows the old
+value; clearing a cell you had set still clears the decision.
+
 Auth: Google service account, see config/secrets/README.md.
 """
 from __future__ import annotations
@@ -187,20 +192,26 @@ def pull(cfg: dict, con, sh=None) -> int:
             print(f"[warn] could not read tab {name}: {e}")
 
     current = {r["id"]: r for r in store.board_rows(con)}
+    pushed = store.sheet_snapshot(con)
     changed = 0
     for jid, e in edits.items():
         row = current.get(jid)
         if row is None:
             continue
         dec, stage = e["decision"], e["stage"]
-        if dec != row["decision"]:
+        # A cell that still shows what we last pushed is not an edit: the database
+        # may have moved on since. With no snapshot, a blank cell never clears.
+        base_dec, base_stage = pushed.get(jid, (None, None))
+        dec_edited = dec != base_dec if base_dec is not None else dec != ""
+        stage_edited = stage != base_stage if base_stage is not None else stage != ""
+        if dec_edited and dec != row["decision"]:
             if dec == "":
                 store.clear_decision(con, jid)
                 changed += 1
             elif dec in store.DECISIONS:
                 store.set_decision(con, jid, dec, note="via sheet")
                 changed += 1
-        if stage != row["stage"] and stage in store.STAGES:
+        if stage_edited and stage != row["stage"] and stage in store.STAGES:
             store.set_stage(con, jid, stage)
             if not row["decision"] and dec == "":
                 store.set_decision(con, jid, "yes", note="stage set via sheet")
@@ -229,6 +240,8 @@ def push(cfg: dict, con, sh=None, skip_pull: bool = False) -> dict[str, int]:
         if tabs[key]:
             ws.update(tabs[key], "A2", value_input_option="RAW")
         counts[key] = len(tabs[key])
+    store.save_sheet_snapshot(con, {int(r[0]): (r[1], r[2]) for rows in tabs.values() for r in rows})
+    con.commit()
     print(f"Push: {counts['pipeline']} row(s) on '{cfg['sheet']['worksheet']}', "
           f"{counts['archive']} on '{cfg['sheet'].get('archive_worksheet', 'archive')}'.")
     return counts
@@ -269,6 +282,8 @@ def main() -> None:
     if args.init:
         for name in (cfg["sheet"]["worksheet"], cfg["sheet"].get("archive_worksheet", "archive")):
             _format(_worksheet(sh, name))
+        store.save_sheet_snapshot(con, {})       # the tabs are empty now
+        con.commit()
         print("Initialized worksheets.")
     elif args.pull:
         pull(cfg, con, sh)

@@ -77,6 +77,13 @@ def migrate(con: sqlite3.Connection) -> list[str]:
         con.execute("ALTER TABLE applications ADD COLUMN updated_at TEXT")
         con.execute("UPDATE applications SET updated_at = created_at WHERE updated_at IS NULL")
         done.append("applications.updated_at")
+    if not _columns(con, "sheet_state"):
+        con.execute("""CREATE TABLE sheet_state (
+            job_id    INTEGER PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+            decision  TEXT NOT NULL DEFAULT '',
+            stage     TEXT NOT NULL DEFAULT '',
+            pushed_at TEXT NOT NULL DEFAULT (datetime('now')))""")
+        done.append("sheet_state")
     con.execute("CREATE INDEX IF NOT EXISTS idx_jobs_source_id ON jobs(source, source_job_id)")
 
     # Legacy lifecycle values stored as decisions -> applications.status
@@ -240,6 +247,19 @@ BOARD_SQL = """
     LEFT JOIN decisions d    ON d.job_id = j.id
     LEFT JOIN applications a ON a.job_id = j.id
 """
+
+
+def sheet_snapshot(con: sqlite3.Connection) -> dict[int, tuple[str, str]]:
+    """(decision, stage) per job as the last Sheet push wrote them."""
+    return {r["job_id"]: (r["decision"], r["stage"])
+            for r in con.execute("SELECT job_id, decision, stage FROM sheet_state")}
+
+
+def save_sheet_snapshot(con: sqlite3.Connection, rows: dict[int, tuple[str, str]]) -> None:
+    """Replace the snapshot with what a push just wrote."""
+    con.execute("DELETE FROM sheet_state")
+    con.executemany("INSERT INTO sheet_state (job_id, decision, stage) VALUES (?, ?, ?)",
+                    [(jid, dec or "", stage or "") for jid, (dec, stage) in rows.items()])
 
 
 def board_rows(con: sqlite3.Connection, passed_only: bool = True) -> list[sqlite3.Row]:

@@ -74,6 +74,15 @@ CREATE TABLE IF NOT EXISTS digests (
     sent_at         TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- What the last Sheet push wrote per job, so a pull can tell a phone edit
+-- from a cell that has not caught up with the database yet.
+CREATE TABLE IF NOT EXISTS sheet_state (
+    job_id          INTEGER PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+    decision        TEXT NOT NULL DEFAULT '',
+    stage           TEXT NOT NULL DEFAULT '',
+    pushed_at       TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_jobs_company   ON jobs(company);
 CREATE INDEX IF NOT EXISTS idx_jobs_last_seen ON jobs(last_seen);
 CREATE INDEX IF NOT EXISTS idx_jobs_source_id ON jobs(source, source_job_id);

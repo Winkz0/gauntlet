@@ -56,27 +56,47 @@ def _to_int(token: str) -> int | None:
     return n if SALARY_MIN <= n <= SALARY_MAX else None
 
 
-def _structured_salary(raw: dict | None) -> tuple[int | None, int | None] | None:
-    """Ashby ships a compensation block; other boards do not."""
+def _annual(v) -> int | None:
+    try:
+        n = int(float(v))
+    except (TypeError, ValueError):
+        return None
+    return n if SALARY_MIN <= n <= SALARY_MAX else None
+
+
+def _structured_salary(raw: dict | None) -> tuple[int, int, str] | None:
+    """
+    Sources that ship salary as data: Ashby's compensation block, Adzuna's
+    salary fields (Adzuna fills them with its own prediction when the ad has
+    none, and says so in salary_is_predicted), and USAJobs remuneration.
+    """
     if not isinstance(raw, dict):
         return None
-    comp = raw.get("compensation")
-    if not isinstance(comp, dict):
-        return None
     vals = []
-    for t in comp.get("compensationTiers") or []:
-        for c in t.get("components", []):
-            for k in ("minValue", "maxValue", "value"):
-                v = c.get(k)
-                if isinstance(v, (int, float)) and SALARY_MIN <= v <= SALARY_MAX:
-                    vals.append(int(v))
-    return (min(vals), max(vals)) if vals else None
+    src = "posting"
+    comp = raw.get("compensation")
+    if isinstance(comp, dict):
+        for t in comp.get("compensationTiers") or []:
+            for c in t.get("components", []):
+                for k in ("minValue", "maxValue", "value"):
+                    vals.append(_annual(c.get(k)))
+    elif "salary_is_predicted" in raw:
+        vals = [_annual(raw.get("salary_min")), _annual(raw.get("salary_max"))]
+        if str(raw.get("salary_is_predicted")) == "1":
+            src = "osint_estimate"
+    elif isinstance(raw.get("PositionRemuneration"), list):
+        for r in raw["PositionRemuneration"]:
+            if isinstance(r, dict) and (r.get("RateIntervalCode") == "PA"
+                                        or "year" in str(r.get("Description", "")).lower()):
+                vals += [_annual(r.get("MinimumRange")), _annual(r.get("MaximumRange"))]
+    vals = [v for v in vals if v]
+    return (min(vals), max(vals), src) if vals else None
 
 
 def parse_salary(text: str, raw: dict | None = None) -> tuple[int | None, int | None, str]:
     s = _structured_salary(raw)
     if s:
-        return s[0], s[1], "posting"
+        return s
     if not text:
         return None, None, "none"
 
@@ -105,14 +125,16 @@ _HYBRID = r"\bhybrid\b"
 _ONSITE = r"\b(on[- ]?site|in[- ]?office|in[- ]person)\b"
 
 
-def parse_remote(text: str, location: str) -> str:
-    loc = (location or "").lower()
-    if re.search(_REMOTE_WEAK, loc):
-        return "remote"
-    if re.search(_HYBRID, loc):
-        return "hybrid"
-    if re.search(_ONSITE, loc):
-        return "onsite"
+def parse_remote(text: str, location: str, title: str = "") -> str:
+    # A mode stated in the location or the title ("SOC Analyst II (Remote)")
+    # outranks the body, which search APIs often cut to a short snippet.
+    for field in ((location or "").lower(), (title or "").lower()):
+        if re.search(_REMOTE_WEAK, field):
+            return "remote"
+        if re.search(_HYBRID, field):
+            return "hybrid"
+        if re.search(_ONSITE, field):
+            return "onsite"
 
     blob = (text or "").lower()
     if re.search(_REMOTE_STRONG, blob):
@@ -139,9 +161,19 @@ _DIRECT = re.compile(r"\b(full[- ]time|permanent|direct hire|fte|regular employe
 
 
 def _structured_employment(raw: dict | None) -> str | None:
-    """Boards that state the schedule type structurally."""
+    """Boards that state the schedule or appointment type structurally."""
     if not isinstance(raw, dict):
         return None
+    contract_type = raw.get("contract_type")               # Adzuna: permanent | contract
+    if contract_type in ("permanent", "contract"):
+        return "direct" if contract_type == "permanent" else "contract"
+    offering = raw.get("PositionOfferingType")              # USAJobs: Permanent, Term, Temporary, ...
+    if isinstance(offering, list):
+        names = " ".join(str(o.get("Name", "")) for o in offering if isinstance(o, dict)).lower()
+        if "permanent" in names:
+            return "direct"
+        if "temporary" in names:
+            return "contract"
     detail = raw.get("detail") if isinstance(raw.get("detail"), dict) else raw
     for key in ("timeType", "job_schedule_type", "employmentType", "type"):
         v = detail.get(key)
@@ -178,12 +210,23 @@ SENIORITY_MAP = [
 ]
 
 
+# SOC tiers written as "L1" or "T2". Only read in SOC titles, because "L4"
+# elsewhere is a big-employer ladder level (see parse_level_number).
+_SOC_TIER = re.compile(r"\b[lt]([1-3])\b")
+_SOC_TIER_LABEL = {"1": "analyst_i", "2": "analyst_ii", "3": "senior"}
+
+
+def _soc_tier(t: str) -> str | None:
+    m = _SOC_TIER.search(t) if re.search(r"\bsoc\b", t) else None
+    return _SOC_TIER_LABEL[m.group(1)] if m else None
+
+
 def parse_seniority(title: str) -> str:
     t = (title or "").lower()
     for rx, label in SENIORITY_MAP:
         if re.search(rx, t):
             return label
-    return "analyst_ii"  # assume mid unless signalled otherwise
+    return _soc_tier(t) or "analyst_ii"  # assume mid unless signalled otherwise
 
 
 # Explicit ladder numbers used by large employers: "(L5)", "E4", "ICT3", and a
@@ -207,7 +250,8 @@ def parse_level_number(title: str) -> int | None:
 def has_level_signal(title: str) -> bool:
     """False when parse_seniority fell back to its default and no ladder number is present."""
     t = (title or "").lower()
-    return parse_level_number(t) is not None or any(re.search(rx, t) for rx, _ in SENIORITY_MAP)
+    return (parse_level_number(t) is not None or _soc_tier(t) is not None
+            or any(re.search(rx, t) for rx, _ in SENIORITY_MAP))
 
 
 def enrich(job: dict) -> dict:
@@ -217,7 +261,8 @@ def enrich(job: dict) -> dict:
     job["salary_min"] = lo
     job["salary_max"] = hi
     job["salary_source"] = src
-    job["remote_type"] = parse_remote(text, job.get("location", ""))
+    job["salary_note"] = "est., unverified: Adzuna salary prediction" if src == "osint_estimate" else None
+    job["remote_type"] = parse_remote(text, job.get("location", ""), job.get("title", ""))
     job["employment_type"] = parse_employment(text, raw)
     job["seniority"] = parse_seniority(job.get("title", ""))
     return job

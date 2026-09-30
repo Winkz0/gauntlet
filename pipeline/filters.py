@@ -6,20 +6,25 @@ Tags surface in the digest and the Sheet so unverified fields are visible.
 
 Dealbreakers (hard fail):
   - title matches a role_keywords_block term
-  - no role keyword in the title, and no (gate term in title + keyword in body)
+  - no role keyword or role family in the title, and no (gate term in title
+    + keyword in body)
   - remote_type is onsite
   - hybrid role whose location does not mention the configured metro
   - location matches a location_block term
   - employment_type in employment_types_block
   - salary known and max < floor
-  - seniority below seniority_min
+  - unnamed company (see is_named) with no salary at all, when
+    filters.unnamed_require_salary is on
+  - seniority below seniority_min, or below the lowest min_level of the
+    role families the title belongs to
   - optional filters.level_cap: for the listed companies, seniority outside
     [floor, ceiling], or an explicit ladder number (L5, E5, "Engineer 5")
     above max_level_number
 
 Soft signals (tag only): unknown salary, unknown employment, unknown remote,
 role matched only in the body, location not clearly in an ok region,
-preferred-company boost, strong salary, no level in a level-capped title.
+preferred-company boost, strong salary, no level in a level-capped title or
+a tag_unlabeled family, unnamed company (general_search).
 """
 from __future__ import annotations
 
@@ -73,6 +78,55 @@ def _has_term(text: str, terms: list[str]) -> list[str]:
     return hits
 
 
+def _word_rx(word: str) -> str:
+    """One variant word as a whole-word regex; a trailing * matches any ending."""
+    if word.endswith("*"):
+        return r"(?<![a-z0-9])" + re.escape(word[:-1])
+    return r"(?<![a-z0-9])" + re.escape(word) + r"(?![a-z0-9])"
+
+
+def role_families(title: str, cfg: dict) -> list[str]:
+    """Names of the role families with a variant whose words all appear in the title."""
+    t = (title or "").lower()
+    hits = []
+    for name, fam in (cfg.get("role_families") or {}).items():
+        for variant in (fam or {}).get("variants") or []:
+            words = str(variant).lower().split()
+            if words and all(re.search(_word_rx(w), t) for w in words):
+                hits.append(name)
+                break
+    return hits
+
+
+def _family_floor(families: list[str], cfg: dict) -> tuple[str, str | None]:
+    """
+    (seniority floor, family that set it). A family without a valid min_level
+    uses seniority_min; across several families the lowest floor wins. No
+    family: seniority_min.
+    """
+    base = cfg["filters"]["seniority_min"]
+    options = []
+    for name in families:
+        lvl = (cfg["role_families"][name] or {}).get("min_level")
+        options.append((lvl, name) if lvl in SENIORITY_ORDER else (base, None))
+    if not options:
+        return base, None
+    return min(options, key=lambda o: SENIORITY_ORDER.index(o[0]) if o[0] in SENIORITY_ORDER
+               else len(SENIORITY_ORDER))
+
+
+def is_named(job: dict, cfg: dict) -> bool:
+    """
+    A company the human named: in targets_preferred or the registry (the
+    sourcing driver puts registry names in cfg["named_companies"]). A manual
+    intake counts as named, since the human picked it.
+    """
+    if str(job.get("source") or "").startswith("manual"):
+        return True
+    names = {str(c).lower() for c in (cfg.get("targets_preferred") or []) + (cfg.get("named_companies") or [])}
+    return (job.get("company") or "").lower() in names
+
+
 def title_prefilter(title: str, cfg: dict) -> bool:
     """
     Cheap title-only pre-check used before a board adapter spends a request
@@ -83,6 +137,7 @@ def title_prefilter(title: str, cfg: dict) -> bool:
     if _has_term(t, cfg.get("role_keywords_block", [])):
         return False
     return bool(_has_term(t, cfg.get("role_keywords_any", []))
+                or role_families(t, cfg)
                 or _has_term(t, cfg["filters"].get("title_gate_terms", [])))
 
 
@@ -103,8 +158,9 @@ def apply_filters(job: dict, cfg: dict) -> tuple[bool, list[dict]]:
 
     # --- role keyword match ---
     title_kw = _has_term(title_l, cfg.get("role_keywords_any", []))
-    if title_kw:
-        reasons.append({"rule": "role_keyword", "ok": True, "detail": title_kw[:3]})
+    families = role_families(title_l, cfg)
+    if title_kw or families:
+        reasons.append({"rule": "role_keyword", "ok": True, "detail": (title_kw + families)[:3]})
     else:
         gate = _has_term(title_l, f.get("title_gate_terms", []))
         body_kw = _has_term(desc_l, cfg.get("role_keywords_any", [])) if gate else []
@@ -180,6 +236,12 @@ def apply_filters(job: dict, cfg: dict) -> tuple[bool, list[dict]]:
     else:
         reasons.append({"rule": "employment", "ok": True, "detail": et})
 
+    # --- company: named, or found by the general search ---
+    named = is_named(job, cfg)
+    if not named:
+        reasons.append({"rule": "company", "ok": True, "detail": "not a named company",
+                        "tag": "general_search"})
+
     # --- salary ---
     smax, smin = job.get("salary_max"), job.get("salary_min")
     ssrc = job.get("salary_source", "none")
@@ -195,22 +257,28 @@ def apply_filters(job: dict, cfg: dict) -> tuple[bool, list[dict]]:
                 tag = "estimate"
             reasons.append({"rule": "salary", "ok": True,
                             "detail": f"{smin}-{smax}", "source": ssrc, "tag": tag})
-    elif f.get("allow_unverified_salary", True):
+    elif f.get("allow_unverified_salary", True) and (named or not f.get("unnamed_require_salary")):
         reasons.append({"rule": "salary", "ok": True, "detail": "not listed",
                         "source": "none", "tag": "salary_unknown"})
     else:
         passed = False
-        reasons.append({"rule": "salary", "ok": False, "detail": "not listed"})
+        reasons.append({"rule": "salary", "ok": False,
+                        "detail": "not listed" + ("" if named else " (unnamed company)")})
 
-    # --- seniority floor (a level cap can lower it for its companies) ---
+    # --- seniority floor (a level cap, else the role families, can move it) ---
     cap = _level_cap(job, f)
-    sen_floor = (cap or {}).get("floor") or f["seniority_min"]
-    if _seniority_ok(job.get("seniority"), sen_floor):
-        reasons.append({"rule": "seniority", "ok": True, "detail": job.get("seniority")})
-    else:
+    fam_floor, fam_source = _family_floor(families, cfg)
+    sen_floor = (cap or {}).get("floor") or fam_floor
+    sen_reason = {"rule": "seniority", "ok": True, "detail": job.get("seniority")}
+    if not _seniority_ok(job.get("seniority"), sen_floor):
         passed = False
-        reasons.append({"rule": "seniority", "ok": False,
-                        "detail": f"{job.get('seniority')} < {sen_floor}"})
+        sen_reason = {"rule": "seniority", "ok": False,
+                      "detail": f"{job.get('seniority')} < {sen_floor}"
+                                + (f" ({fam_source} floor)" if fam_source and not cap else "")}
+    elif any((cfg["role_families"][n] or {}).get("tag_unlabeled") for n in families) \
+            and not has_level_signal(job.get("title") or ""):
+        sen_reason.update(detail="no level in title", tag="verify_level")
+    reasons.append(sen_reason)
 
     # --- level cap ceiling ---
     if cap:

@@ -181,6 +181,20 @@ def mark_missing(con: sqlite3.Connection, company: str, source: str, seen_ids: s
     return len(missing)
 
 
+def expire_unseen(con: sqlite3.Connection, source: str, days: int) -> int:
+    """
+    Search results have no board to vanish from: a query only returns recent
+    postings, so absence from one run proves nothing. A result no search has
+    returned for `days` is flagged gone instead.
+    """
+    cur = con.execute(
+        """UPDATE jobs SET board_status='gone', gone_since=datetime('now')
+           WHERE source=? AND board_status='live'
+             AND julianday('now') - julianday(last_seen) >= ?""",
+        (source, days))
+    return cur.rowcount
+
+
 def save_filter(con: sqlite3.Connection, job_id: int, passed: bool, reasons: list) -> None:
     con.execute(
         """INSERT INTO filter_results (job_id, passed, reasons)

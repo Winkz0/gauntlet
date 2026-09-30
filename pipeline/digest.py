@@ -6,9 +6,11 @@ Digest builder + email sender.
     python -m pipeline.digest --send            # also email it and log the run
     python -m pipeline.digest --kind biweekly   # adds the "idle yes-roles" section
 
-Selects gate-passing roles you have not triaged yet, ranks preferred
-companies and strong-salary roles first, renders markdown, and optionally
-emails it. Every sent digest is logged in the digests table. No LLM.
+Selects gate-passing roles you have not triaged yet and renders markdown in
+two groups: named companies (registry and targets_preferred) first, then
+roles the general search found at unnamed employers. Within each group,
+preferred companies and strong-salary roles lead. Optionally emails it.
+Every sent digest is logged in the digests table. No LLM.
 """
 from __future__ import annotations
 
@@ -58,22 +60,30 @@ def _salary(r) -> str:
     return s
 
 
+def _role_md(r) -> str:
+    tags = tags_from_reasons(r["reasons"])
+    badges = [label for tag, label in BADGES if tag in tags]
+    badge_str = f"  [{' | '.join(badges)}]" if badges else ""
+    return (
+        f"### {r['title']} at {r['company']}{badge_str}\n"
+        f"- Location / mode: {r['location'] or '?'} / {r['remote_type']}\n"
+        f"- Salary: {_salary(r)}\n"
+        f"- Hire type: {r['employment_type']}\n"
+        f"- Link: {r['url']}\n"
+        f"- Job id: `{r['id']}`\n"
+    )
+
+
 def render_md(rows: list, stale: list | None = None, kind: str = "daily") -> str:
     lines = [f"# Gauntlet {kind} digest: {len(rows)} new role(s)\n"]
     if not rows:
         lines.append("No new roles cleared the gate.\n")
-    for r in rows:
-        tags = tags_from_reasons(r["reasons"])
-        badges = [label for tag, label in BADGES if tag in tags]
-        badge_str = f"  [{' | '.join(badges)}]" if badges else ""
-        lines.append(
-            f"## {r['title']} at {r['company']}{badge_str}\n"
-            f"- Location / mode: {r['location'] or '?'} / {r['remote_type']}\n"
-            f"- Salary: {_salary(r)}\n"
-            f"- Hire type: {r['employment_type']}\n"
-            f"- Link: {r['url']}\n"
-            f"- Job id: `{r['id']}`\n"
-        )
+    general = [r for r in rows if "general_search" in tags_from_reasons(r["reasons"])]
+    named = [r for r in rows if "general_search" not in tags_from_reasons(r["reasons"])]
+    for heading, group in (("Named companies", named), ("General search", general)):
+        if group:
+            lines.append(f"## {heading} ({len(group)})\n")
+            lines.extend(_role_md(r) for r in group)
     if stale:
         lines.append(f"\n## Idle yes-roles ({len(stale)})\n")
         lines.append("Said yes, no application movement since:\n")

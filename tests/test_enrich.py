@@ -75,3 +75,51 @@ def test_salary_per_year_suffix_counts_as_context():
             "market up to $140,000/year in our highest geographic market.")
     assert E.parse_salary(text) == (94000, 140000, "posting")
     assert E.parse_salary("Pay: $135,000/yr plus bonus") == (135000, 135000, "posting")
+
+
+def test_salary_structured_search_sources():
+    adzuna = {"salary_is_predicted": "0", "salary_min": 115000.0, "salary_max": 140000.0}
+    assert E.parse_salary("", adzuna) == (115000, 140000, "posting")
+    predicted = {"salary_is_predicted": "1", "salary_min": 98000.5, "salary_max": 98000.5}
+    assert E.parse_salary("", predicted) == (98000, 98000, "osint_estimate")
+    assert E.parse_salary("$120,000 - $150,000", {"salary_is_predicted": "0"}) == (120000, 150000, "posting")
+    yearly = {"PositionRemuneration": [{"MinimumRange": "99200.0", "MaximumRange": "128956.0",
+                                        "RateIntervalCode": "PA", "Description": "Per Year"}]}
+    assert E.parse_salary("", yearly) == (99200, 128956, "posting")
+    hourly = {"PositionRemuneration": [{"MinimumRange": "25.0", "MaximumRange": "32.5",
+                                        "RateIntervalCode": "PH", "Description": "Per Hour"}]}
+    assert E.parse_salary("", hourly) == (None, None, "none")
+
+
+def test_enrich_notes_a_predicted_salary():
+    job = {"title": "SOC Analyst II", "location": "Remote, US", "description": "",
+           "raw": {"salary_is_predicted": "1", "salary_min": 100000, "salary_max": 130000}}
+    E.enrich(job)
+    assert job["salary_source"] == "osint_estimate" and "prediction" in job["salary_note"]
+    job["raw"] = {}
+    E.enrich(job)
+    assert job["salary_note"] is None
+
+
+def test_employment_structured_search_sources():
+    assert E.parse_employment("", {"contract_type": "permanent"}) == "direct"
+    assert E.parse_employment("", {"contract_type": "contract"}) == "contract"
+    assert E.parse_employment("", {"PositionOfferingType": [{"Name": "Permanent", "Code": "15317"}]}) == "direct"
+    assert E.parse_employment("", {"PositionOfferingType": [{"Name": "Temporary"}]}) == "contract"
+    assert E.parse_employment("", {"PositionOfferingType": [{"Name": "Term"}]}) == "unknown"
+
+
+def test_remote_mode_from_title():
+    assert E.parse_remote("", "Austin, Travis County, US", "SOC Analyst II (Remote)") == "remote"
+    assert E.parse_remote("", "Chicago, IL", "Threat Hunter - Hybrid") == "hybrid"
+    assert E.parse_remote("", "USA - Remote", "Threat Hunter (Hybrid)") == "remote"    # location still wins
+    assert E.parse_remote("fully remote", "Chicago, IL", "Threat Hunter") == "remote"
+
+
+def test_soc_tier_shorthand():
+    assert E.parse_seniority("SOC Analyst L1") == "analyst_i"
+    assert E.parse_seniority("SOC Analyst (T2)") == "analyst_ii"
+    assert E.parse_seniority("SOC L3 Analyst") == "senior"
+    assert E.parse_seniority("Security Engineer (L4)") == "analyst_ii"   # ladder levels are level_cap's job
+    assert E.has_level_signal("SOC Analyst L2")
+    assert not E.has_level_signal("SOC Analyst")

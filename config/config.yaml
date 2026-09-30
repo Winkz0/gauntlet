@@ -78,6 +78,12 @@ filters:
     - contract
     - staffing
     - agency
+  # Companies that are not named (not in adapters/registry.yaml and not in
+  # targets_preferred) are held to salary_floor with no exceptions: the
+  # posting needs a salary, listed or estimated, whose top clears the floor.
+  # "Not listed" fails for them. Named companies and manual intakes keep
+  # allow_unverified_salary.
+  unnamed_require_salary: true
   seniority_min: analyst_ii     # analyst_i | analyst_ii | senior | lead | principal
   # Optional per-company level cap for employers whose ladders run above the
   # title (for example "Engineer 5" or "(L5)"). Off unless set, usually in
@@ -103,6 +109,9 @@ filters:
     - malware
     - intrusion
     - csirt
+    - cybersecurity
+    - infosec
+    - intelligence
 
 # ---- Target companies (preference boost, NOT a hard gate) ----
 targets_preferred:
@@ -141,6 +150,42 @@ role_keywords_any:
   - offensive security
   - penetration test
   - red team
+  - threat intelligence
+  - threat intel
+  - cybersecurity analyst
+
+# ---- Role families (title variants, level floors, general-search queries) ----
+# A title belongs to a family when it contains every word of one variant, in
+# any order: "soc analyst" also matches "Analyst, SOC" and "SOC Tier 2
+# Analyst". A word ending in * matches any ending, so "intel*" covers intel
+# and intelligence. A family match counts as a role keyword in the title.
+# `queries` are what the general search sends to each search source (see
+# `search` below); every query costs one call per source per run.
+# Optional per family, usually set in config.local.yaml:
+#   min_level: analyst_i    replaces filters.seniority_min for this family
+#   tag_unlabeled: true     a title with no level gets a verify_level tag
+# When a title matches several families, the lowest min_level applies. A
+# filters.level_cap floor still wins for its companies.
+role_families:
+  soc_analyst:
+    variants: [soc analyst, soc engineer, security operations analyst, security operations center, cyber defense analyst]
+    queries: [soc analyst, security operations center analyst, cyber defense analyst]
+  detection_engineer:
+    variants: [detection engineer*, siem engineer*]
+    queries: [detection engineer, detection engineering, siem engineer]
+  threat_intel:
+    variants: [threat intel*, cyber intel*, cti]
+    queries: [threat intelligence, threat intel, cyber intelligence, cti analyst]
+  incident_response:
+    variants: [incident respon*, dfir, csirt, cirt, digital forensic*, cyber forensic*]
+    queries: [incident response, incident responder, dfir, digital forensics]
+  threat_hunting:
+    variants: [threat hunt*]
+    queries: [threat hunter, threat hunting]
+  malware_analysis:
+    variants: [malware]
+    queries: [malware]
+
 role_keywords_block:              # title-only, whole-word
   - sales
   - account executive
@@ -187,6 +232,34 @@ role_keywords_block:              # title-only, whole-word
   - corporate security
   - protective services
   - guard
+
+# ---- General search (every employer, not just the registry) ----
+# After the registry pull, each role_families query is sent to the search
+# APIs below. Both are official APIs with free keys; set them in
+# config/secrets.env (a source without keys is skipped with a notice):
+#   adzuna    ADZUNA_APP_ID, ADZUNA_APP_KEY      developer.adzuna.com
+#   usajobs   USAJOBS_API_KEY, USAJOBS_EMAIL     developer.usajobs.gov
+# A result at a registry company that already has a working adapter is
+# dropped, since the adapter pulls the full posting. A result at any other
+# named company is renamed to match it and keeps its preferred ranking.
+# Everyone else is unnamed: they rank after named companies and must clear
+# filters.unnamed_require_salary.
+search:
+  enabled: true
+  max_days_old: 7               # only postings this recent
+  expire_after_days: 14         # a search result not seen again this long is marked gone
+  adzuna:
+    enabled: true
+    country: us
+    results_per_page: 50        # API maximum
+    distance_km: 50             # radius around location_context for the local pass
+    # Two calls per query (one remote, one near location_context). The free
+    # tier allows 250 calls a day and 2,500 a month; 17 queries is 34 a run.
+    max_calls: 60
+  usajobs:
+    enabled: true
+    results_per_page: 100
+    public_only: true           # skip announcements open only to current federal employees
 
 # ---- Model config ----
 # Documentation only. Tailoring runs inside a Claude Code session, so the

@@ -2,10 +2,11 @@
 
 An automated, human-in-the-loop job search pipeline for security operations
 roles. Plain Python sources and filters postings from public applicant
-tracking system (ATS) APIs. A Claude Code skill tailors a resume and cover
-letter for each role the human says yes to, then attacks its own draft with
-the screening prompts recruiters run. The human reviews and submits every
-application. Nothing is ever auto-submitted.
+tracking system (ATS) APIs for the companies you name, plus a general
+keyword search (Adzuna and USAJobs) for everyone else. A Claude Code skill
+tailors a resume and cover letter for each role the human says yes to, then
+attacks its own draft with the screening prompts recruiters run. The human
+reviews and submits every application. Nothing is ever auto-submitted.
 
 ```
 registry.yaml ──► adapters/boards.py ──► enrich ──► filter gate ──► SQLite
@@ -44,6 +45,7 @@ that recruiter-side AI screens flag. This project separates the two problems:
 ```
 adapters/
   boards.py            one function per ATS, all returning the same dict shape
+  search.py            general search across all employers (Adzuna, USAJobs), same dict shape
   registry.yaml        which companies to pull and how
 pipeline/
   config.py            loads config.yaml and overlays config/secrets.env
@@ -113,7 +115,9 @@ PDF rendering of packets uses LibreOffice (`soffice --headless`).
 
 ```bash
 python -m pipeline.source                  # pull everything (cron this)
-python -m pipeline.source --only Keeper    # one company
+python -m pipeline.source --only Keeper    # one company, no general search
+python -m pipeline.source --no-search      # registry companies only
+python -m pipeline.source --search-only    # general search only
 python -m pipeline.source --refilter       # re-run the gate after editing config, no network
 python -m pipeline.digest                  # what is new; --kind biweekly adds idle yes-roles
 python -m pipeline.decide 42 yes           # or no / skip / clear
@@ -126,6 +130,44 @@ python -m pipeline.sheet_sync --dry-run    # show which tab each row lands on
 Inside Claude Code, `/morning-hunt` runs the whole loop and invokes the
 `resume-tailor` skill for the yes-set. Packets land in
 `output/<Company>_<jobid>/`.
+
+## General search
+
+The registry only covers companies someone added by hand. After the registry
+pull, `pipeline.source` sends every query under `role_families` in
+`config/config.yaml` to two official job search APIs with free keys:
+
+- **Adzuna** (developer.adzuna.com): aggregates US postings across boards.
+  Two calls per query, one for remote postings and one near
+  `location_context`, capped by `search.adzuna.max_calls` to stay inside the
+  free tier (250 calls a day, 2,500 a month). It returns a snippet, not the
+  full posting, and sometimes a predicted salary, which is tagged as an
+  estimate.
+- **USAJobs** (developer.usajobs.gov): federal postings, always with a
+  salary. Announcements open only to current federal employees are skipped.
+
+Put the keys in `config/secrets.env` (`ADZUNA_APP_ID`, `ADZUNA_APP_KEY`,
+`USAJOBS_API_KEY`, `USAJOBS_EMAIL`); a source without keys is skipped.
+
+Role families also decide what a title means. A title belongs to a family
+when it contains every word of one variant in any order, so `soc analyst`
+matches "Analyst, SOC" and "SOC Tier 2 Analyst", and `threat intel*` matches
+"Cyber Threat Intelligence Analyst". A family can set its own `min_level`
+and tag titles that state no level; see `config/config.local.example.yaml`.
+
+Companies are split in two:
+
+- **Named**: in the registry or `targets_preferred`. A search result at a
+  named company with a working adapter is dropped, since the adapter pulls
+  the full posting; one at a named company without an adapter (Google,
+  Rapid7) is renamed to match and ranks with the named group.
+- **Unnamed**: everyone else. The digest lists them after the named group,
+  tagged `general_search`, and `filters.unnamed_require_salary` holds them to
+  the salary floor: a listed or estimated salary whose top clears
+  `salary_floor`, never "not listed".
+
+A search result no run has returned for `search.expire_after_days` is marked
+gone, since a query only returns recent postings.
 
 ## Adding a board
 

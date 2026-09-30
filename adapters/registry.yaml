@@ -93,8 +93,10 @@ companies:
     note: jobs.apple.com search API needs a session token; revisit.
 
 # ---- Keyword-only discovery sources (no fixed company) ----
-# For roles at companies not listed above. Handled by a human-driven Claude in
-# Chrome pass, never by automation. Nothing in the pipeline reads this block yet.
+# Roles at companies not listed above come from the general search (the
+# `search` block in config/config.yaml: Adzuna and USAJobs APIs). The entries
+# below are a human-driven Claude in Chrome pass, never automation. Nothing in
+# the pipeline reads this block yet.
 discovery_sources:
   - name: linkedin
     method: chrome

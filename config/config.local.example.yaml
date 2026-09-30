@@ -21,3 +21,15 @@ filters:
     ceiling: analyst_ii
     max_level_number: 4
     tag_unlabeled: true
+
+# Per-family level floors. Families merge key by key, so the committed
+# variants and queries stay in place.
+role_families:
+  soc_analyst:
+    min_level: analyst_ii     # Tier 2 and up
+    tag_unlabeled: true       # "SOC Analyst" with no tier -> verify_level
+  detection_engineer:
+    min_level: analyst_i      # entry level welcome
+  # Add a query to one family without restating the committed list:
+  threat_intel:
+    queries+: [intelligence analyst cyber]

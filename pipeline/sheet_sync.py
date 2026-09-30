@@ -44,7 +44,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from pipeline import store                        # noqa: E402
+from pipeline import store, utf8_output           # noqa: E402
 from pipeline.config import db_path, load_cfg     # noqa: E402
 from pipeline.filters import tags_from_reasons    # noqa: E402
 
@@ -258,6 +258,7 @@ def dry_run(cfg: dict, con) -> None:
 
 
 def main() -> None:
+    utf8_output()
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--init", action="store_true", help="create/format both worksheets")
     ap.add_argument("--push", action="store_true", help="DB -> Sheet (pulls first)")

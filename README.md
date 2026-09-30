@@ -19,7 +19,9 @@ registry.yaml ──► adapters/boards.py ──► enrich ──► filter gat
                                human says yes ──► /morning-hunt ──► resume-tailor skill
                                                                     ├── resume.docx / .pdf
                                                                     ├── cover_letter.docx / .pdf
+                                                                    ├── <First>_<Last>_Resume.pdf (upload copy)
                                                                     ├── interview_defense.md
+                                                                    ├── submission_pack.md
                                                                     └── gauntlet.json
                                                                           │
                                                           status: queued_for_review
@@ -34,10 +36,15 @@ that recruiter-side AI screens flag. This project separates the two problems:
 - **Sourcing and filtering are boring and deterministic.** No model calls.
   Regex, a config file, and a SQLite database. Runs on a schedule for free.
 - **Tailoring is where reasoning matters, and it is adversarial.** The skill
-  drafts, then runs six recruiter screening prompts plus a rejection-email
-  simulation against its own output, and revises once toward authenticity.
-  Every claim must trace to a bullet in the candidate's master bullet
-  library. Missing experience is flagged as a stretch, never invented.
+  drafts, then hands the recruiter screening prompts, a ranker grade, and a
+  rejection-email simulation to an isolated reviewer that sees only the
+  posting and the text a parser pulls from the PDFs, and revises once toward
+  authenticity. Every claim must trace to a bullet in the candidate's master
+  bullet library. Missing experience is flagged as a stretch, never invented.
+- **The checks around the model are deterministic too.** A lint script
+  traces every number and tool back to the library, splits posting terms
+  into backed / needs-confirmation / gap before drafting, and blocks
+  `queued_for_review` while a file still carries generator metadata.
 
 ## Layout
 
@@ -58,11 +65,16 @@ pipeline/
 data/
   schema.sql
   master_bullets.yaml  the candidate's bullet library (gitignored; see below)
+  portal_answers.yaml  canonical application-portal answers (gitignored)
 .claude/
   commands/morning-hunt.md    the daily loop, run as /morning-hunt
   skills/resume-tailor/       the tailoring + gauntlet skill
+    templates/build_docs.py   starting point for every packet's generator
+    scripts/ats_hygiene.py    the only write path for packet .docx/.pdf files
+    scripts/packet_lint.py    coverage, knockouts, fact trace, hygiene gate
 adversarial_checks_seed_prompts.md   the screening prompts the gauntlet uses
-tests/                 pytest suite for enrich, filters, store, sheet retention
+tests/                 pytest suite for enrich, filters, store, sheet retention,
+                       document hygiene, and the packet lint
 ```
 
 ## State model
@@ -98,6 +110,7 @@ python -m venv .venv && . .venv/bin/activate
 pip install -r requirements-dev.txt
 cp config/secrets.env.example config/secrets.env      # fill in SHEET_ID, EMAIL_TO, SMTP_*
 cp data/master_bullets.example.yaml data/master_bullets.yaml   # then replace with your history
+cp data/portal_answers.example.yaml data/portal_answers.yaml   # then fill in or leave TODO
 # Optional Sheet mirror: follow config/secrets/README.md, then
 python -m pipeline.sheet_sync --init
 ```
@@ -107,7 +120,9 @@ lists, and blocklists. Preferences you would rather not commit go in
 `config/config.local.yaml` (gitignored), which is layered over it; see
 `config/config.local.example.yaml`. Edit `adapters/registry.yaml` to add
 companies.
-PDF rendering of packets uses LibreOffice (`soffice --headless`).
+PDF rendering of packets uses LibreOffice (`soffice --headless`). The packet lint
+reads PDF text with `pdftotext` or `pypdf` when either is installed and falls
+back to the .docx otherwise.
 
 ## Daily use
 
@@ -146,16 +161,24 @@ out of the committed registry, list it under `companies+:` in
 - API-first sourcing only. No LinkedIn or Indeed scraping.
 - Decisions are the human's. The pipeline surfaces and tailors; it does not
   choose.
+- Clean files. Every packet document is written through
+  `ats_hygiene.write_document`, which replaces python-docx's generator
+  metadata with the candidate's own and uses a plain bullet glyph.
+  `packet_lint.py --strict` blocks `queued_for_review` until the files are
+  clean and every number and tool traces to the library.
 
 ## Personal data
 
-`data/master_bullets.yaml`, `data/gauntlet.db`, `output/`, and everything under
-`config/secrets*` are gitignored. `data/master_bullets.example.yaml` is a
+`data/master_bullets.yaml`, `data/portal_answers.yaml`, `data/gauntlet.db`,
+`output/`, and everything under `config/secrets*` are gitignored. `data/master_bullets.example.yaml` is a
 fictional bullet library (all names, employers, and metrics invented) that
 shows the structure the skill reads: candidate, experience, bullets with
 roles / tools / skills / metric / evidence, certifications, tool_inventory,
 skills. Copy it to `data/master_bullets.yaml` and replace every entry with
-your own history before tailoring anything.
+your own history before tailoring anything. Do the same with
+`data/portal_answers.example.yaml`; leave any answer you have not decided as
+`TODO`, and the skill will carry it into `submission_pack.md` as a visible
+`TODO` rather than guess.
 
 ## Tests
 

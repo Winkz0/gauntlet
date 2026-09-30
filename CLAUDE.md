@@ -14,6 +14,10 @@ You are orchestrating an automated-but-human-in-the-loop job hunt.
   and rate-limited.
 - **Decisions are the human's.** You surface roles; you don't mark yes/no on
   their behalf. You only tailor the `yes` set.
+- **Every packet document goes through `ats_hygiene.write_document`.**
+  `build_docs.py` starts from `.claude/skills/resume-tailor/templates/` and
+  never calls `doc.save()`. `packet_lint.py --strict` must pass before an
+  application moves to `queued_for_review`.
 
 ## Cost / model
 - Sourcing, filtering, dedup, salary estimate, digest, email = plain Python,
@@ -31,3 +35,5 @@ You are orchestrating an automated-but-human-in-the-loop job hunt.
 - config/secrets.env and config/secrets/ are gitignored. Never commit creds,
   service-account JSON, or the SQLite DB with personal decision history if the
   repo goes public.
+- data/portal_answers.yaml holds contact details and salary answers and is
+  gitignored; data/portal_answers.example.yaml shows its shape.

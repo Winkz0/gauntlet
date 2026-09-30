@@ -1,0 +1,34 @@
+# portal_answers.example.yaml: shape of data/portal_answers.yaml.
+# Copy to data/portal_answers.yaml (gitignored) and fill in. Anything you
+# have not decided stays "TODO"; the resume-tailor skill copies answers into
+# each role's submission_pack.md as written and never fills a TODO itself.
+# Role-specific questions ("why us?") are generated per role, not here.
+
+identity:
+  full_name: "Jordan Example"
+  email: "jordan@example.com"
+  phone: "(555) 010-0000"
+  location: "City, ST"
+  linkedin: "linkedin.com/in/jordan-example"
+
+logistics:
+  work_authorization: "TODO"
+  visa_sponsorship_needed: "TODO"
+  willing_to_relocate: "TODO"
+  notice_period: "TODO"
+  earliest_start: "TODO"
+  security_clearance: "TODO"
+
+compensation:
+  # Portals often force a single number; give the target, not the floor.
+  expected_salary: "TODO"
+  salary_range_if_asked: "TODO"
+
+standard_questions:
+  how_did_you_hear: "Company careers page"
+  references: "Available upon request"
+  highest_education: "TODO"
+  degree_required_answer: "TODO"
+  veteran_status: "TODO (voluntary disclosure: answer or decline)"
+  disability_status: "TODO (voluntary disclosure: answer or decline)"
+  gender_ethnicity: "TODO (voluntary disclosure: answer or decline)"

@@ -10,6 +10,7 @@ adapters/registry.local.yaml
 
 # personal data: the real bullet library and every generated packet
 data/master_bullets.yaml
+data/portal_answers.yaml
 data/*.db*
 output/
 

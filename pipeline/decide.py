@@ -23,7 +23,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from pipeline import store                        # noqa: E402
+from pipeline import store, utf8_output           # noqa: E402
 from pipeline.config import db_path, load_cfg     # noqa: E402
 
 
@@ -43,6 +43,7 @@ def cmd_list(con, show_all: bool) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
+    utf8_output()
     argv = sys.argv[1:] if argv is None else argv
     cfg = load_cfg()
     con = store.connect(db_path(cfg))

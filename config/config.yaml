@@ -78,6 +78,39 @@ filters:
     - contract
     - staffing
     - agency
+  # Staffing firms, matched whole-word against the company name. Search APIs
+  # repost their listings, and a short snippet rarely says "our client".
+  # Add your own in config.local.yaml under filters with staffing_companies+.
+  staffing_companies:
+    - staffing
+    - recruiting
+    - recruitment
+    - recruiters
+    - talent
+    - Addison Group
+    - Adecco
+    - Aerotek
+    - Akkodis
+    - Allegis
+    - Apex Systems
+    - Beacon Hill
+    - Collabera
+    - CyberCoders
+    - Experis
+    - Insight Global
+    - Jobot
+    - Judge Group
+    - Kelly Services
+    - Kforce
+    - Manpower
+    - ManpowerGroup
+    - Modis
+    - Peterson Technology Partners
+    - Randstad
+    - Robert Half
+    - Signature Consultants
+    - TEKsystems
+    - Vaco
   # Companies that are not named (not in adapters/registry.yaml and not in
   # targets_preferred) are held to salary_floor with no exceptions: the
   # posting needs a salary, listed or estimated, whose top clears the floor.

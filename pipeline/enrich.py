@@ -152,6 +152,7 @@ def parse_remote(text: str, location: str, title: str = "") -> str:
 _CONTRACT = re.compile(
     r"\b(contract (position|role|opportunity|basis|assignment|to hire|employee)"
     r"|contract-to-hire|contractor (role|position)|(6|12|18)[- ]month contract"
+    r"|duration of (the )?contract|contract (duration|length)"
     r"|c2c|corp[- ]to[- ]corp|1099|w-?2 contract"
     r"|temporary (position|role|assignment)|temp[- ]to[- ]perm)\b", re.IGNORECASE)
 _STAFFING = re.compile(
@@ -164,9 +165,11 @@ def _structured_employment(raw: dict | None) -> str | None:
     """Boards that state the schedule or appointment type structurally."""
     if not isinstance(raw, dict):
         return None
-    contract_type = raw.get("contract_type")               # Adzuna: permanent | contract
-    if contract_type in ("permanent", "contract"):
-        return "direct" if contract_type == "permanent" else "contract"
+    # Adzuna's contract_type is only trusted one way: it marks full-time
+    # postings at SAIC and Google as "contract" while other feeds of the same
+    # posting carry none, so "contract" is left to the text rules.
+    if raw.get("contract_type") == "permanent":
+        return "direct"
     offering = raw.get("PositionOfferingType")              # USAJobs: Permanent, Term, Temporary, ...
     if isinstance(offering, list):
         names = " ".join(str(o.get("Name", "")) for o in offering if isinstance(o, dict)).lower()

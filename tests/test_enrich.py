@@ -103,7 +103,11 @@ def test_enrich_notes_a_predicted_salary():
 
 def test_employment_structured_search_sources():
     assert E.parse_employment("", {"contract_type": "permanent"}) == "direct"
-    assert E.parse_employment("", {"contract_type": "contract"}) == "contract"
+    # Adzuna tags full-time postings as "contract" too often to fail a role on it
+    assert E.parse_employment("Schedule: Full-Time", {"contract_type": "contract"}) == "direct"
+    assert E.parse_employment("", {"contract_type": "contract"}) == "unknown"
+    assert E.parse_employment("Duration of the Contract: 12 Months") == "contract"
+    assert E.parse_employment("Contract length: 6 months, 100% remote") == "contract"
     assert E.parse_employment("", {"PositionOfferingType": [{"Name": "Permanent", "Code": "15317"}]}) == "direct"
     assert E.parse_employment("", {"PositionOfferingType": [{"Name": "Temporary"}]}) == "contract"
     assert E.parse_employment("", {"PositionOfferingType": [{"Name": "Term"}]}) == "unknown"

@@ -218,3 +218,16 @@ def test_digest_lists_named_companies_before_general_search():
     md = render_md([_digest_row(1, "Unlisted Co", ["general_search"]), _digest_row(2, "Rapid7", ["preferred"])])
     assert md.index("## Named companies (1)") < md.index("Rapid7") \
         < md.index("## General search (1)") < md.index("Unlisted Co")
+
+
+def test_utf8_output_survives_names_outside_the_ansi_code_page(monkeypatch):
+    import io
+    import sys
+    from pipeline import utf8_output
+    out, err = io.BytesIO(), io.BytesIO()
+    monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(out, encoding="cp1252"))
+    monkeypatch.setattr(sys, "stderr", io.TextIOWrapper(err, encoding="cp1252"))
+    utf8_output()
+    print("Operations Analyst, SOC at Mondelēz International")
+    sys.stdout.flush()
+    assert out.getvalue().decode("utf-8").strip() == "Operations Analyst, SOC at Mondelēz International"

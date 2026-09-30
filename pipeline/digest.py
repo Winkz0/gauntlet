@@ -22,7 +22,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from pipeline import store                        # noqa: E402
+from pipeline import store, utf8_output           # noqa: E402
 from pipeline.config import db_path, load_cfg     # noqa: E402
 from pipeline.filters import tags_from_reasons    # noqa: E402
 
@@ -115,6 +115,7 @@ def send_email(cfg: dict, body_md: str, kind: str) -> None:
 
 
 def main() -> None:
+    utf8_output()
     ap = argparse.ArgumentParser()
     ap.add_argument("--send", action="store_true", help="email the digest and log the run")
     ap.add_argument("--kind", choices=("daily", "biweekly"), default="daily")

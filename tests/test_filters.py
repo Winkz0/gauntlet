@@ -232,3 +232,13 @@ def test_unnamed_salary_gate_can_be_turned_off(cfg):
     cfg["filters"]["unnamed_require_salary"] = False
     ok, reasons = _run(cfg, company="Unlisted Co", description="Full-time.")
     assert ok and {"salary_unknown", "general_search"} <= F.tags_from_reasons(reasons)
+
+
+def test_staffing_firm_names_fail(cfg):
+    for company in ("Beacon Hill", "TEKsystems, Inc.", "Motion Recruitment Partners", "Top Talent Staffing"):
+        ok, reasons = _run(cfg, company=company)
+        assert not ok, company
+        assert any(r["rule"] == "employment" and "staffing firm" in r["detail"] for r in reasons), company
+    for company in ("Beacon Health Options", "TalentLMS", "Acme"):        # whole-word only
+        ok, _ = _run(cfg, company=company)
+        assert ok, company

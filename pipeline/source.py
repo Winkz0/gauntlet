@@ -31,7 +31,7 @@ from adapters import search as SR                  # noqa: E402
 from pipeline import enrich as E                   # noqa: E402
 from pipeline import filters as F                  # noqa: E402
 from pipeline import salary_osint as S             # noqa: E402
-from pipeline import store                         # noqa: E402
+from pipeline import store, utf8_output            # noqa: E402
 from pipeline.config import db_path, load_cfg, merge_local  # noqa: E402
 
 REGISTRY_PATH = ROOT / "adapters" / "registry.yaml"
@@ -222,6 +222,7 @@ def refilter() -> None:
 
 
 def main() -> None:
+    utf8_output()
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", help="only registry companies whose name contains this text (skips the general search)")
     scope = ap.add_mutually_exclusive_group()

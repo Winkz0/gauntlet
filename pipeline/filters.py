@@ -11,7 +11,8 @@ Dealbreakers (hard fail):
   - remote_type is onsite
   - hybrid role whose location does not mention the configured metro
   - location matches a location_block term
-  - employment_type in employment_types_block
+  - employment_type in employment_types_block, or the company name matches
+    a filters.staffing_companies term
   - salary known and max < floor
   - unnamed company (see is_named) with no salary at all, when
     filters.unnamed_require_salary is on
@@ -225,9 +226,13 @@ def apply_filters(job: dict, cfg: dict) -> tuple[bool, list[dict]]:
         reasons.append({"rule": "geo", "ok": True, "tag": "verify_location",
                         "detail": f"location not clearly in an ok region: {job.get('location') or '?'}"})
 
-    # --- employment type ---
+    # --- employment type (a known staffing firm's name settles it) ---
     et = job.get("employment_type", "unknown")
-    if et in f["employment_types_block"]:
+    agency = _has_term((job.get("company") or "").lower(), f.get("staffing_companies", []))
+    if agency:
+        passed = False
+        reasons.append({"rule": "employment", "ok": False, "detail": f"staffing firm: {agency[0]}"})
+    elif et in f["employment_types_block"]:
         passed = False
         reasons.append({"rule": "employment", "ok": False, "detail": et})
     elif et == "unknown":

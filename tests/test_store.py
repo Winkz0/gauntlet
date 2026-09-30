@@ -70,3 +70,13 @@ def test_migrate_creates_schema_on_empty_db(tmp_path):
     assert store.digest_candidates(con) == []
     assert store.migrate(con) == []
     con.close()
+
+
+def test_expire_unseen_only_touches_stale_rows_of_that_source(con):
+    a, _ = store.upsert_job(con, make_job(source="adzuna", source_job_id="1"))
+    b, _ = store.upsert_job(con, make_job(source="adzuna", source_job_id="2", title="Threat Hunter"))
+    c, _ = store.upsert_job(con, make_job(source="greenhouse", source_job_id="3", title="Malware Analyst"))
+    con.execute("UPDATE jobs SET last_seen=datetime('now', '-20 days') WHERE id IN (?, ?)", (a, c))
+    assert store.expire_unseen(con, "adzuna", 14) == 1
+    status = {r["id"]: r["board_status"] for r in con.execute("SELECT id, board_status FROM jobs")}
+    assert status == {a: "gone", b: "live", c: "live"}

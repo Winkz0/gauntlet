@@ -19,6 +19,10 @@ YAML:
     SHEET_ID          -> cfg["sheet"]["sheet_id"]
     EMAIL_TO          -> cfg["notify"]["email_to"]
     LOCATION_CONTEXT  -> cfg["filters"]["location_context"]  (your metro, e.g. "Chicago, IL")
+    ADZUNA_APP_ID     -> cfg["search"]["adzuna"]["app_id"]
+    ADZUNA_APP_KEY    -> cfg["search"]["adzuna"]["app_key"]
+    USAJOBS_API_KEY   -> cfg["search"]["usajobs"]["api_key"]
+    USAJOBS_EMAIL     -> cfg["search"]["usajobs"]["email"]    (the address the key was issued to)
     SMTP_*            -> cfg["smtp"][...]
 
 A config value written as a <placeholder> counts as unset.
@@ -81,6 +85,16 @@ def load_cfg(path: Path = CONFIG_PATH, local_path: Path | None = LOCAL_PATH) -> 
     lc = str(filters.get("location_context") or "").strip()
     if lc.startswith("<") and lc.endswith(">"):
         filters["location_context"] = ""
+
+    search = cfg.setdefault("search", {})
+    for source, key, secret in (("adzuna", "app_id", "ADZUNA_APP_ID"),
+                                ("adzuna", "app_key", "ADZUNA_APP_KEY"),
+                                ("usajobs", "api_key", "USAJOBS_API_KEY"),
+                                ("usajobs", "email", "USAJOBS_EMAIL")):
+        if sec.get(secret):
+            if not isinstance(search.get(source), dict):
+                search[source] = {}
+            search[source][key] = sec[secret]
 
     cfg["smtp"] = {
         "host": sec.get("SMTP_HOST", "localhost"),
